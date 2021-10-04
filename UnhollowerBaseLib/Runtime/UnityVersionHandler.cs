@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -96,7 +96,7 @@ namespace UnhollowerBaseLib.Runtime
         private static T GetHandler<T>()
         {
             if (Handlers.TryGetValue(typeof(T), out var result))
-                return (T) result;
+                return (T)result;
 
             LogSupport.Error($"No direct for {typeof(T).FullName} found for Unity {UnityVersion}; this likely indicates a severe error somewhere");
 
@@ -175,10 +175,10 @@ namespace UnhollowerBaseLib.Runtime
         //Images
         public static INativeImageStruct NewImage() =>
             imageStructHandler.CreateNewImageStruct();
-        
+
         public static unsafe INativeImageStruct Wrap(Il2CppImage* imagePointer) =>
             imageStructHandler.Wrap(imagePointer);
-        
+
 
         //Methods
         public static INativeMethodInfoStruct NewMethod() =>
@@ -197,7 +197,10 @@ namespace UnhollowerBaseLib.Runtime
 
         public static unsafe INativeParameterInfoStruct Wrap(Il2CppParameterInfo* parameterInfo) =>
             parameterInfoStructHandler.Wrap(parameterInfo);
-        
+
+        public static unsafe INativeParameterInfoStruct Wrap(Il2CppParameterInfo* parameterInfo, int index) =>
+            parameterInfoStructHandler.Wrap(parameterInfo, index);
+
         public static bool ParameterInfoHasNamePosToken() =>
             parameterInfoStructHandler.HasNamePosToken;
 
