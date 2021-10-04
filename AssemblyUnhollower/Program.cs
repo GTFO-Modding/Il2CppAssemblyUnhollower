@@ -20,9 +20,9 @@ namespace AssemblyUnhollower
             RewriteGlobalContext rewriteContext;
             IIl2CppMetadataAccess inputAssemblies;
             using (new TimingCookie("Reading assemblies"))
-                inputAssemblies = new CecilMetadataAccess(Directory.EnumerateFiles(options.SourceDir, "*.dll"));
-            
-            using(new TimingCookie("Creating assembly contexts"))
+                inputAssemblies = new CecilMetadataAccess(options.Source);
+
+            using (new TimingCookie("Creating assembly contexts"))
                 rewriteContext = new RewriteGlobalContext(options, inputAssemblies, NullMetadataAccess.Instance, NullMetadataAccess.Instance);
 
             for (var chars = 1; chars <= 3; chars++)
@@ -30,7 +30,7 @@ namespace AssemblyUnhollower
             {
                 options.TypeDeobfuscationCharsPerUniquifier = chars;
                 options.TypeDeobfuscationMaxUniquifiers = uniq;
-                
+
                 rewriteContext.RenamedTypes.Clear();
                 rewriteContext.RenameGroups.Clear();
 
@@ -38,7 +38,7 @@ namespace AssemblyUnhollower
 
                 var uniqueTypes = rewriteContext.RenameGroups.Values.Count(it => it.Count == 1);
                 var nonUniqueTypes = rewriteContext.RenameGroups.Values.Count(it => it.Count > 1);
-                
+
                 Console.WriteLine($"Chars=\t{chars}\tMaxU=\t{uniq}\tUniq=\t{uniqueTypes}\tNonUniq=\t{nonUniqueTypes}");
             }
         }
@@ -95,93 +95,25 @@ namespace AssemblyUnhollower
 
         public static void Main(string[] args)
         {
-            LogSupport.InstallConsoleHandlers();
-            
-            var options = new UnhollowerOptions();
-            var analyze = false;
-            var generateMap = false;
-            
-            foreach (var s in args)
-            {
-                if (s == ParamAnalyze) 
-                    analyze = true;
-                else if (s == ParamGenerateDeobMap)
-                    generateMap = true;
-                else if (s == ParamHelp || s == ParamHelpShort || s == ParamHelpShortSlash)
-                {
-                    PrintUsage();
-                    return;
-                } else if (s == ParamVerbose)
-                {
-                    LogSupport.TraceHandler += Console.WriteLine;
-                    options.Verbose = true;
-                } else if (s == ParamNoXrefCache)
-                    options.NoXrefCache = true;
-                else if (s == ParamNoCopyUnhollowerLibs)
-                    options.NoCopyUnhollowerLibs = true;
-                else if (s.StartsWith(ParamInputDir))
-                    options.SourceDir = s.Substring(ParamInputDir.Length);
-                else if (s.StartsWith(ParamOutputDir))
-                    options.OutputDir = s.Substring(ParamOutputDir.Length);
-                else if (s.StartsWith(ParamMscorlibPath))
-                    options.MscorlibPath = s.Substring(ParamMscorlibPath.Length);
-                else if (s.StartsWith(ParamSystemLibsPath))
-                    options.SystemLibrariesPath = s.Substring(ParamSystemLibsPath.Length);
-                else if (s.StartsWith(ParamUnityDir))
-                    options.UnityBaseLibsDir = s.Substring(ParamUnityDir.Length);
-                else if (s.StartsWith(ParamGameAssemblyPath))
-                    options.GameAssemblyPath = s.Substring(ParamGameAssemblyPath.Length);
-                else if(s.StartsWith(ParamUniqChars))
-                    options.TypeDeobfuscationCharsPerUniquifier = Int32.Parse(s.Substring(ParamUniqChars.Length));
-                else if(s.StartsWith(ParamUniqMax))
-                    options.TypeDeobfuscationMaxUniquifiers = Int32.Parse(s.Substring(ParamUniqMax.Length));
-                else if(s.StartsWith(ParamBlacklistAssembly))
-                    options.AdditionalAssembliesBlacklist.Add(s.Substring(ParamBlacklistAssembly.Length));
-                else if (s.StartsWith(ParamObfRegex))
-                    options.ObfuscatedNamesRegex = new Regex(s.Substring(ParamObfRegex.Length), RegexOptions.Compiled);
-                else if(s.StartsWith(ParamRenameMap))
-                    ReadRenameMap(s.Substring(ParamRenameMap.Length), options);
-                else if(s.StartsWith(ParamGenerateDeobMapAssembly))
-                    options.DeobfuscationGenerationAssemblies.Add(s.Substring(ParamGenerateDeobMapAssembly.Length));
-                else if (s.StartsWith(ParamGenerateDeobMapNew))
-                    options.DeobfuscationNewAssembliesPath = s.Substring(ParamGenerateDeobMapNew.Length);
-                else
-                {
-                    LogSupport.Error($"Unrecognized option {s}; use -h for help");
-                    return;
-                }
-            }
-
-            if (analyze && generateMap)
-            {
-                LogSupport.Error($"Can't use {ParamAnalyze} and {ParamGenerateDeobMap} at the same time");
-                return;
-            }
-            
-            if (analyze)
-                AnalyzeDeobfuscationParams(options);
-            else if (generateMap)
-                DeobfuscationMapGenerator.GenerateDeobfuscationMap(options);
-            else
-                Main(options);
+            throw new NotSupportedException();
         }
-        
+
         public static void Main(UnhollowerOptions options)
         {
-            if (string.IsNullOrEmpty(options.SourceDir))
+            if (options.Source == null || !options.Source.Any())
             {
-                Console.WriteLine("No input dir specified; use -h for help");
+                Console.WriteLine("No input specified");
                 return;
             }
-            
+
             if (string.IsNullOrEmpty(options.OutputDir))
             {
-                Console.WriteLine("No target dir specified; use -h for help");
+                Console.WriteLine("No target dir specified");
                 return;
             }
             if (string.IsNullOrEmpty(options.MscorlibPath) && string.IsNullOrEmpty(options.SystemLibrariesPath))
             {
-                Console.WriteLine("No mscorlib or system libraries specified; use -h for help");
+                Console.WriteLine("No mscorlib or system libraries specified");
                 return;
             }
 
@@ -194,15 +126,15 @@ namespace AssemblyUnhollower
             IMetadataAccess unityAssemblies;
 
             using (new TimingCookie("Reading assemblies"))
-                gameAssemblies = new CecilMetadataAccess(Directory.EnumerateFiles(options.SourceDir, "*.dll"));
+                gameAssemblies = new CecilMetadataAccess(options.Source);
 
             using (new TimingCookie("Reading system assemblies"))
             {
-                if (!string.IsNullOrEmpty(options.SystemLibrariesPath)) 
+                if (!string.IsNullOrEmpty(options.SystemLibrariesPath))
                     systemAssemblies = new CecilMetadataAccess(Directory.EnumerateFiles(options.SystemLibrariesPath, "*.dll")
                         .Where(it => Path.GetFileName(it).StartsWith("System.") || Path.GetFileName(it) == "mscorlib.dll" || Path.GetFileName(it) == "netstandard.dll"));
                 else
-                    systemAssemblies = new CecilMetadataAccess(new[] {options.MscorlibPath});
+                    systemAssemblies = new CecilMetadataAccess(new[] { options.MscorlibPath });
 
             }
 
@@ -214,51 +146,51 @@ namespace AssemblyUnhollower
             else
                 unityAssemblies = NullMetadataAccess.Instance;
 
-            using(new TimingCookie("Creating rewrite assemblies"))
+            using (new TimingCookie("Creating rewrite assemblies"))
                 rewriteContext = new RewriteGlobalContext(options, gameAssemblies, systemAssemblies, unityAssemblies);
 
-            using(new TimingCookie("Computing renames"))
+            using (new TimingCookie("Computing renames"))
                 Pass05CreateRenameGroups.DoPass(rewriteContext);
-            using(new TimingCookie("Creating typedefs"))
+            using (new TimingCookie("Creating typedefs"))
                 Pass10CreateTypedefs.DoPass(rewriteContext);
-            using(new TimingCookie("Computing struct blittability"))
+            using (new TimingCookie("Computing struct blittability"))
                 Pass11ComputeTypeSpecifics.DoPass(rewriteContext);
-            using(new TimingCookie("Filling typedefs"))
+            using (new TimingCookie("Filling typedefs"))
                 Pass12FillTypedefs.DoPass(rewriteContext);
-            using(new TimingCookie("Filling generic constraints"))
+            using (new TimingCookie("Filling generic constraints"))
                 Pass13FillGenericConstraints.DoPass(rewriteContext);
-            using(new TimingCookie("Creating members"))
+            using (new TimingCookie("Creating members"))
                 Pass15GenerateMemberContexts.DoPass(rewriteContext);
-            using(new TimingCookie("Scanning method cross-references"))
+            using (new TimingCookie("Scanning method cross-references"))
                 Pass16ScanMethodRefs.DoPass(rewriteContext, options);
-            using(new TimingCookie("Finalizing method declarations"))
+            using (new TimingCookie("Finalizing method declarations"))
                 Pass18FinalizeMethodContexts.DoPass(rewriteContext);
             LogSupport.Info($"{Pass18FinalizeMethodContexts.TotalPotentiallyDeadMethods} total potentially dead methods");
-            using(new TimingCookie("Filling method parameters"))
+            using (new TimingCookie("Filling method parameters"))
                 Pass19CopyMethodParameters.DoPass(rewriteContext);
-            
-            using(new TimingCookie("Creating static constructors"))
+
+            using (new TimingCookie("Creating static constructors"))
                 Pass20GenerateStaticConstructors.DoPass(rewriteContext);
-            using(new TimingCookie("Creating value type fields"))
+            using (new TimingCookie("Creating value type fields"))
                 Pass21GenerateValueTypeFields.DoPass(rewriteContext);
-            using(new TimingCookie("Creating enums"))
+            using (new TimingCookie("Creating enums"))
                 Pass22GenerateEnums.DoPass(rewriteContext);
-            using(new TimingCookie("Creating IntPtr constructors"))
+            using (new TimingCookie("Creating IntPtr constructors"))
                 Pass23GeneratePointerConstructors.DoPass(rewriteContext);
-            using(new TimingCookie("Creating type getters"))
+            using (new TimingCookie("Creating type getters"))
                 Pass24GenerateTypeStaticGetters.DoPass(rewriteContext);
-            using(new TimingCookie("Creating non-blittable struct constructors"))
+            using (new TimingCookie("Creating non-blittable struct constructors"))
                 Pass25GenerateNonBlittableValueTypeDefaultCtors.DoPass(rewriteContext);
-            
-            using(new TimingCookie("Creating generic method static constructors"))
+
+            using (new TimingCookie("Creating generic method static constructors"))
                 Pass30GenerateGenericMethodStoreConstructors.DoPass(rewriteContext);
-            using(new TimingCookie("Creating field accessors"))
+            using (new TimingCookie("Creating field accessors"))
                 Pass40GenerateFieldAccessors.DoPass(rewriteContext);
-            using(new TimingCookie("Filling methods"))
+            using (new TimingCookie("Filling methods"))
                 Pass50GenerateMethods.DoPass(rewriteContext);
-            using(new TimingCookie("Generating implicit conversions"))
+            using (new TimingCookie("Generating implicit conversions"))
                 Pass60AddImplicitConversions.DoPass(rewriteContext);
-            using(new TimingCookie("Creating properties"))
+            using (new TimingCookie("Creating properties"))
                 Pass70GenerateProperties.DoPass(rewriteContext);
 
             if (options.UnityBaseLibsDir != null)
@@ -274,17 +206,17 @@ namespace AssemblyUnhollower
             }
             else
                 LogSupport.Warning("Not performing unstripping as unity libs are not specified");
-            
-            using(new TimingCookie("Generating forwarded types"))
+
+            using (new TimingCookie("Generating forwarded types"))
                 Pass89GenerateForwarders.DoPass(rewriteContext);
-            
-            using(new TimingCookie("Writing xref cache"))
+
+            using (new TimingCookie("Writing xref cache"))
                 Pass89GenerateMethodXrefCache.DoPass(rewriteContext, options);
-            
-            using(new TimingCookie("Writing assemblies"))
+
+            using (new TimingCookie("Writing assemblies"))
                 Pass90WriteToDisk.DoPass(rewriteContext, options);
-            
-            using(new TimingCookie("Writing method pointer map"))
+
+            using (new TimingCookie("Writing method pointer map"))
                 Pass91GenerateMethodPointerMap.DoPass(rewriteContext, options);
 
             if (!options.NoCopyUnhollowerLibs)
@@ -293,7 +225,7 @@ namespace AssemblyUnhollower
                 File.Copy(typeof(RuntimeLibMarker).Assembly.Location, Path.Combine(options.OutputDir, typeof(RuntimeLibMarker).Assembly.GetName().Name + ".dll"), true);
                 File.Copy(typeof(Decoder).Assembly.Location, Path.Combine(options.OutputDir, typeof(Decoder).Assembly.GetName().Name + ".dll"), true);
             }
-            
+
             LogSupport.Info("Done!");
 
             rewriteContext.Dispose();
@@ -325,9 +257,9 @@ namespace AssemblyUnhollower
             while (!reader.EndOfStream)
             {
                 var line = reader.ReadLine();
-                if(string.IsNullOrEmpty(line) || line.StartsWith("#")) continue;
+                if (string.IsNullOrEmpty(line) || line.StartsWith("#")) continue;
                 var split = line.Split(';');
-                if(split.Length < 2) continue;
+                if (split.Length < 2) continue;
                 options.RenameMap[split[0]] = split[1];
             }
         }

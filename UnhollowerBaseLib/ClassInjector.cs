@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -69,12 +69,24 @@ namespace UnhollowerRuntimeLib
             *(IntPtr*)targetGcHandlePointer = handleAsPointer;
         }
 
+        public static bool IsTypeRegisteredInIl2Cpp<T>() where T : class => IsTypeRegisteredInIl2Cpp(typeof(T));
+        public static bool IsTypeRegisteredInIl2Cpp(Type type)
+        {
+            var currentPointer = ReadClassPointerForType(type);
+            if (currentPointer != IntPtr.Zero)
+                return true;
+            lock (InjectedTypes)
+                if (InjectedTypes.Contains(type.FullName))
+                    return true;
+            return false;
+        }
+
         public static void RegisterTypeInIl2Cpp<T>() where T : class => RegisterTypeInIl2Cpp(typeof(T), true);
         public static void RegisterTypeInIl2Cpp<T>(bool logSuccess) where T : class => RegisterTypeInIl2Cpp(typeof(T), logSuccess);
         public static void RegisterTypeInIl2Cpp(Type type) => RegisterTypeInIl2Cpp(type, true);
         public static void RegisterTypeInIl2Cpp(Type type, bool logSuccess)
         {
-            if(type == null)
+            if (type == null)
                 throw new ArgumentException($"Type argument cannot be null");
 
             if (type.IsGenericType || type.IsGenericTypeDefinition)
@@ -187,7 +199,7 @@ namespace UnhollowerRuntimeLib
             string namespaze = type.Namespace ?? string.Empty;
             var attribute = Attribute.GetCustomAttribute(type, typeof(UnhollowerBaseLib.Attributes.ClassInjectionAssemblyTargetAttribute)) as UnhollowerBaseLib.Attributes.ClassInjectionAssemblyTargetAttribute;
 
-            foreach (IntPtr image in ((attribute is null) ? IL2CPP.GetIl2CppImages() : attribute.GetImagePointers()) )
+            foreach (IntPtr image in ((attribute is null) ? IL2CPP.GetIl2CppImages() : attribute.GetImagePointers()))
             {
                 ClassFromNameDictionary.Add((namespaze, klass, image), typePointer);
             }
@@ -564,7 +576,7 @@ namespace UnhollowerRuntimeLib
                 {
                     string namespaze = Marshal.PtrToStringAnsi(param2);
                     string klass = Marshal.PtrToStringAnsi(param3);
-                    ClassFromNameDictionary.TryGetValue((namespaze, klass, param1),out intPtr);
+                    ClassFromNameDictionary.TryGetValue((namespaze, klass, param1), out intPtr);
                 }
 
                 return intPtr;

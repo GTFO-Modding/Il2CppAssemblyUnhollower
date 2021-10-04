@@ -1,3 +1,4 @@
+using Mono.Cecil;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
@@ -5,6 +6,7 @@ namespace AssemblyUnhollower
 {
     public class UnhollowerOptions
     {
+        public List<AssemblyDefinition>? Source { get; set; }
         public string SourceDir { get; set; }
         public string OutputDir { get; set; }
         public string MscorlibPath { get; set; }

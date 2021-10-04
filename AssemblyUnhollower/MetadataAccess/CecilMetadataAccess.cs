@@ -1,4 +1,5 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Linq;
 using Mono.Cecil;
 
 namespace AssemblyUnhollower.MetadataAccess
@@ -9,19 +10,28 @@ namespace AssemblyUnhollower.MetadataAccess
         private readonly List<AssemblyDefinition> myAssemblies = new();
         private readonly Dictionary<string, AssemblyDefinition> myAssembliesByName = new();
         private readonly Dictionary<(string AssemblyName, string TypeName), TypeDefinition> myTypesByName = new();
-        
+
         public CecilMetadataAccess(IEnumerable<string> assemblyPaths)
         {
             var metadataResolver = new MetadataResolver(myAssemblyResolver);
-            
-            foreach (var sourceAssemblyPath in assemblyPaths)
+
+            Load(assemblyPaths.Select(path => AssemblyDefinition.ReadAssembly(path, new ReaderParameters(ReadingMode.Deferred) { MetadataResolver = metadataResolver })));
+        }
+
+        public CecilMetadataAccess(IEnumerable<AssemblyDefinition> assemblies)
+        {
+            Load(assemblies);
+        }
+
+        private void Load(IEnumerable<AssemblyDefinition> assemblies)
+        {
+            foreach (var sourceAssembly in assemblies)
             {
-                var sourceAssembly = AssemblyDefinition.ReadAssembly(sourceAssemblyPath, new ReaderParameters(ReadingMode.Deferred) {MetadataResolver = metadataResolver});
                 myAssemblyResolver.Register(sourceAssembly);
                 myAssemblies.Add(sourceAssembly);
                 myAssembliesByName[sourceAssembly.Name.Name] = sourceAssembly;
             }
-            
+
             foreach (var sourceAssembly in myAssemblies)
             {
                 var sourceAssemblyName = sourceAssembly.Name.Name;
@@ -35,9 +45,9 @@ namespace AssemblyUnhollower.MetadataAccess
 
         public void Dispose()
         {
-            foreach (var assemblyDefinition in myAssemblies) 
+            foreach (var assemblyDefinition in myAssemblies)
                 assemblyDefinition.Dispose();
-            
+
             myAssemblies.Clear();
             myAssembliesByName.Clear();
             myAssemblyResolver.Dispose();
@@ -52,7 +62,7 @@ namespace AssemblyUnhollower.MetadataAccess
         public IList<GenericInstanceType>? GetKnownInstantiationsFor(TypeDefinition genericDeclaration) => null;
         public string? GetStringStoredAtAddress(long offsetInMemory) => null;
         public MethodReference? GetMethodRefStoredAt(long offsetInMemory) => null;
-        
+
         private class Resolver : DefaultAssemblyResolver
         {
             public void Register(AssemblyDefinition ass) => RegisterAssembly(ass);
